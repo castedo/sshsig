@@ -1,0 +1,6 @@
+tree fd7187a49a7b26eb36d782d34c672245b94b2e30
+parent b0162c139e4ea2e4783402de26617c912eef1e19
+author Castedo Ellerman <castedo@castedo.com> 1729263976 -0400
+committer Castedo Ellerman <castedo@castedo.com> 1729263976 -0400
+
+use vite-plugin-static-copy in doc example of Vite
