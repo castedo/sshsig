@@ -45,3 +45,13 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.format]
+quote-style = "preserve"
+
+[tool.black]
+skip_string_normalization = true
+
+[tool.yapf]
+column_limit = 88
+based_on_style = "facebook"

@@ -176,17 +176,3 @@ def sshsig_verify(
     pub_key = PublicKey.from_ssh_encoding(sshsig_outer.public_key)
     pub_key.verify(sigdata, toverify.to_bytes())
     return pub_key
-
-
-def ssh_keygen_check_novalidate(
-    msg_in: str | bytes | BinaryIO, namespace: str, armored_signature: str
-) -> None:
-    """Emulate `ssh-keygen -Y check-novalidate -n namespace -s signature_file`."""
-    if isinstance(msg_in, str):
-        msg_in = msg_in.encode()
-    msg_file = io.BytesIO(msg_in) if isinstance(msg_in, bytes) else msg_in
-    try:
-        sshsig_outer = SshsigSignature.from_armored(armored_signature)
-    except ValueError as ex:
-        raise InvalidSignature(ex)
-    sshsig_verify(sshsig_outer, msg_file, namespace)

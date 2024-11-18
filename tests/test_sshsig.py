@@ -1,9 +1,8 @@
 from pathlib import Path
 from unittest import TestCase
 
-from sshsig import sshsig
-from sshsig.ssh_keygen import load_allowed_signers_file, verify
-from sshsig.ssh_public_key import PublicKeyAlgorithm
+from sshsig import ssh_keygen, sshsig
+from sshsig.ssh_keygen import load_allowed_signers_file
 
 
 TESTDATA_DIR = Path(__file__).parent.parent / "testdata"
@@ -59,41 +58,50 @@ crazy_ascii = "Nobody expects the Spanish ..."
 crazy_unicode = "Nobody expects 🥘💃🐂 ..."
 
 
-class SshKeygenCheckNoValidate(TestCase):
-    def good_check_novalidate(
-        self, message: str, signature: str, namespace: str = "git"
-    ) -> bool:
-        try:
-            sshsig.ssh_keygen_check_novalidate(message, namespace, signature)
-            return True
-        except sshsig.SshsigError:
-            return False
+def good_check_novalidate(
+    message: str, signature: str, namespace: str = "git"
+) -> bool:
+    try:
+        ssh_keygen.check_novalidate(message, namespace, signature)
+        return True
+    except sshsig.SshsigError:
+        return False
 
+class SshKeygenCheckNoValidate(TestCase):
     def test_commit_content(self):
         (msg, sig) = msg_sig_pair_of_commit
-        self.assertTrue(self.good_check_novalidate(msg, sig))
+        self.assertTrue(good_check_novalidate(msg, sig))
 
     def test_hola_mundo(self):
         (msg, sig) = msg_sig_pair_hola_mundo
-        self.assertTrue(self.good_check_novalidate(msg, sig))
+        self.assertTrue(good_check_novalidate(msg, sig))
 
     def test_reject_mixed_msg_sig_pairs(self):
         (msg1, sig1) = msg_sig_pair_of_commit
         (msg2, sig2) = msg_sig_pair_hola_mundo
-        self.assertFalse(self.good_check_novalidate(msg1, sig2))
-        self.assertFalse(self.good_check_novalidate(msg2, sig1))
+        self.assertFalse(good_check_novalidate(msg1, sig2))
+        self.assertFalse(good_check_novalidate(msg2, sig1))
 
     def test_reject_subcmd_check_novalidate(self):
         (msg, sig) = msg_sig_pair_of_commit
 
-        self.assertFalse(self.good_check_novalidate(msg, crazy_ascii))
-        self.assertFalse(self.good_check_novalidate(msg, crazy_unicode))
-        self.assertFalse(self.good_check_novalidate(crazy_ascii, sig))
-        self.assertFalse(self.good_check_novalidate(crazy_unicode, sig))
+        self.assertFalse(good_check_novalidate(msg, crazy_ascii))
+        self.assertFalse(good_check_novalidate(msg, crazy_unicode))
+        self.assertFalse(good_check_novalidate(crazy_ascii, sig))
+        self.assertFalse(good_check_novalidate(crazy_unicode, sig))
 
         # the signature was signed with namespace "git"
-        self.assertFalse(self.good_check_novalidate(msg, sig, "not-git"))
+        self.assertFalse(good_check_novalidate(msg, sig, "not-git"))
 
+
+def good_verify(
+    message: str, signers, signer_id, signature: str, namespace: str = "git"
+) -> bool:
+    try:
+        ssh_keygen.verify(message, signers, signer_id, namespace, signature)
+        return True
+    except sshsig.SshsigError:
+        return False
 
 class VerifyTests(TestCase):
 
@@ -106,13 +114,13 @@ class VerifyTests(TestCase):
             identity = f.read()
         signers = load_allowed_signers_file(case / "allowed_signers")
 
-        self.assertTrue(verify(msg, signers, identity, "git", armored))
-        self.assertFalse(verify(msg, signers, identity, "!git", armored))
+        self.assertTrue(good_verify(msg, signers, identity, armored))
+        self.assertFalse(good_verify(msg, signers, identity, armored, "!git"))
         bad = b"Corrupt" + msg
-        self.assertFalse(verify(bad, signers, identity, "git", armored))
+        self.assertFalse(good_verify(bad, signers, identity, armored))
 
-        none = load_allowed_signers_file(TESTDATA_DIR / "only_lost_allowed_signer")
-        self.assertFalse(verify(msg, none, identity, "git", armored))
+        nobody = load_allowed_signers_file(TESTDATA_DIR / "only_lost_allowed_signer")
+        self.assertFalse(good_verify(msg, nobody, identity, armored))
 
     def test_case_0(self):
         self.verify(SSHSIG_CASES[0])

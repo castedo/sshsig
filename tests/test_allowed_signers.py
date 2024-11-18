@@ -2,8 +2,8 @@ from io import StringIO
 from pathlib import Path
 from unittest import TestCase
 
+from sshsig.allowed_signers import AllowedSigner, load_allowed_signers_file
 from sshsig.ssh_public_key import PublicKey
-from sshsig.ssh_keygen import AllowedSigner, load_allowed_signers_file
 
 
 TESTDATA_DIR = Path(__file__).parent.parent / "testdata"
