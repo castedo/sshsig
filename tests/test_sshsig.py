@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest import TestCase
 
 from sshsig import ssh_keygen, sshsig
-from sshsig.ssh_keygen import load_allowed_signers_file
+from sshsig.allowed_signers import load_for_git_allowed_signers_file
 
 
 TESTDATA_DIR = Path(__file__).parent.parent / "testdata"
@@ -131,11 +131,9 @@ class SshKeygenCheckNoValidate(TestCase):
         self.assertFalse(good_check_novalidate(msg, sig, "not-git"))
 
 
-def good_verify(
-    message: str, signers, signer_id, signature: str, namespace: str = "git"
-) -> bool:
+def good_verify(message: str, signers, signature: str) -> bool:
     try:
-        ssh_keygen.verify(message, signers, signer_id, namespace, signature)
+        ssh_keygen.verify_for_git(message, signers, signature)
         return True
     except sshsig.SshsigError:
         return False
@@ -147,17 +145,16 @@ class VerifyTests(TestCase):
             msg = f.read()
         with open(case / "message.sig") as f:
             armored = f.read()
-        with open(case / "signer_identity") as f:
-            identity = f.read()
-        signers = load_allowed_signers_file(case / "allowed_signers")
+        signers = load_for_git_allowed_signers_file(case / "allowed_signers")
 
-        self.assertTrue(good_verify(msg, signers, identity, armored))
-        self.assertFalse(good_verify(msg, signers, identity, armored, "!git"))
+        self.assertTrue(good_verify(msg, signers, armored))
         bad = b"Corrupt" + msg
-        self.assertFalse(good_verify(bad, signers, identity, armored))
+        self.assertFalse(good_verify(bad, signers, armored))
 
-        nobody = load_allowed_signers_file(TESTDATA_DIR / "only_lost_allowed_signer")
-        self.assertFalse(good_verify(msg, nobody, identity, armored))
+        nobody = load_for_git_allowed_signers_file(
+            TESTDATA_DIR / "only_lost_allowed_signer"
+        )
+        self.assertFalse(good_verify(msg, nobody, armored))
 
     def test_case_0(self):
         self.verify(SSHSIG_CASES[0])

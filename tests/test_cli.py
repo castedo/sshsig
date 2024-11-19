@@ -46,8 +46,7 @@ class CLITests(TestCase):
         args += ["-f", str(case / "allowed_signers")]
         args += ["-n", "git"]
         args += ["-s", str(case / "message.sig")]
-        with open(case / "signer_identity") as f:
-            args += ["-I", f.read().strip()]
+        args += ["-I", '*']
         with open(case / "message", "rb") as msgin:
             self.assertEqual(0, ssh_keygen.main(msgin, args))
 

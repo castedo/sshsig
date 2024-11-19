@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TextIO, TYPE_CHECKING, Union, cast
+from typing import TextIO, TYPE_CHECKING, Union
 
 from .ssh_public_key import PublicKey
 
 
 if TYPE_CHECKING:
-    AllowedSignerOptions = dict[str, bool | str | list[str]]
+    AllowedSignerOptions = dict[str, bool | str]
 
 
 @dataclass
@@ -61,7 +61,6 @@ def lop_one_option(options: AllowedSignerOptions, line: str) -> str:
     if lopped := lop_flag(options, line, "cert-authority"):
         return lopped
     if lopped := lop_option(options, line, "namespaces"):
-        options["namespaces"] = cast(str, options["namespaces"]).split(",")
         return lopped
     if lopped := lop_option(options, line, "valid-after"):
         return lopped
@@ -118,3 +117,29 @@ def load_allowed_signers_file(file: Union[TextIO, Path]) -> Iterable[AllowedSign
         if line and line[0] not in ["#", "\0"]:
             ret.append(AllowedSigner.parse(line))
     return ret
+
+
+def for_git_allowed_keys(allowed_signers: Iterable[AllowedSigner]) -> Iterable[PublicKey]:
+    """Convert a list of ssh-keygen "allowed signers" entries in "for-git" sub-format.
+
+    In the "for-git" sub-format, only the "*" value is accepted in the principles field.
+    The only allowed signers option accepted is 'namespaces="git"'.
+    """
+    ret = list()
+    for allowed in allowed_signers:
+        if allowed.principals != "*":
+            raise ValueError("Only solitary wildcard principal pattern supported.")
+        options = allowed.options or dict()
+        only_namespaces = options.get("namespaces")
+        if only_namespaces is not None and only_namespaces != "git":
+            raise ValueError('Only namespaces="git" is supported.')
+        if "cert-authority" in options:
+            raise ValueError("Certificate keys not supported.")
+        if "valid-before" in options or "valid-after" in options:
+            raise ValueError("Allowed signer validation dates not supported.")
+        ret.append(allowed.key)
+    return ret
+
+
+def load_for_git_allowed_signers_file(file: Union[TextIO, Path]) -> Iterable[PublicKey]:
+    return for_git_allowed_keys(load_allowed_signers_file(file))

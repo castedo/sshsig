@@ -81,7 +81,7 @@ user2@example.com namespaces="file" {key1}
             ),
             AllowedSigner(
                 "user2@example.com",
-                {'namespaces': ["file"]},
+                {'namespaces': "file"},
                 PublicKey.from_open_ssh_str(key1),
             ),
         ]
@@ -134,7 +134,7 @@ foo@b.ar namespaces="git,got" {key1}
         expect = [
             AllowedSigner(
                 "foo@b.ar",
-                {'namespaces': ["git", "got"]},
+                {'namespaces': "git,got"},
                 PublicKey.from_open_ssh_str(key1)
             ),
         ]
