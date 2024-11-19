@@ -97,7 +97,7 @@ def good_check_novalidate(
     message: str, signature: str, namespace: str = "git"
 ) -> bool:
     try:
-        ssh_keygen.check_novalidate(message, namespace, signature)
+        ssh_keygen.check_signature(message, signature, namespace)
         return True
     except sshsig.SshsigError:
         return False
@@ -133,7 +133,7 @@ class SshKeygenCheckNoValidate(TestCase):
 
 def good_verify(message: str, signers, signature: str) -> bool:
     try:
-        ssh_keygen.verify_for_git(message, signers, signature)
+        ssh_keygen.verify(message, signature, signers)
         return True
     except sshsig.SshsigError:
         return False

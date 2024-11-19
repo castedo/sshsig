@@ -7,17 +7,17 @@ from typing import BinaryIO
 
 from .allowed_signers import load_for_git_allowed_signers_file
 from .ssh_public_key import InvalidSignature
-from .sshsig import check_novalidate, verify_for_git
+from .sshsig import check_signature, verify
 
 
 def cli_subcmd_check_novalidate(
     msg_in: BinaryIO,
-    namespace: str,
     signature_file: Path,
+    namespace: str,
 ) -> int:
     try:
         with open(signature_file) as f:
-            check_novalidate(msg_in, namespace, f.read())
+            check_signature(msg_in, f.read(), namespace)
         return 0
     except InvalidSignature as ex:
         print(ex, file=sys.stderr)
@@ -26,13 +26,13 @@ def cli_subcmd_check_novalidate(
 
 def cli_subcmd_verify(
     msg_in: BinaryIO,
-    allowed_signers_file: Path,
     signature_file: Path,
+    allowed_signers_file: Path,
 ) -> int:
     allowed = load_for_git_allowed_signers_file(allowed_signers_file)
     try:
         with open(signature_file) as f:
-            verify_for_git(msg_in, allowed, f.read())
+            verify(msg_in, f.read(), allowed, "git")
         return 0
     except InvalidSignature as ex:
         print(ex, file=sys.stderr)
@@ -70,7 +70,7 @@ def main(stdin: BinaryIO, args: list[str] | None = None) -> int:
         return 2
 
     if noms.subcmd == "check-novalidate":
-        return cli_subcmd_check_novalidate(stdin, noms.namespace, noms.signature_file)
+        return cli_subcmd_check_novalidate(stdin, noms.signature_file, noms.namespace)
     if noms.subcmd == "verify":
         if noms.namespace != "git":
             msg = 'Only namespace "git" supported by verify in this implementation.'
@@ -79,7 +79,7 @@ def main(stdin: BinaryIO, args: list[str] | None = None) -> int:
         if noms.revocation_file:
             print("ssh-keygen verify -r option is not implemented.", file=sys.stderr)
             return 2
-        return cli_subcmd_verify(stdin, noms.allowed_signers_file, noms.signature_file)
+        return cli_subcmd_verify(stdin, noms.signature_file, noms.allowed_signers_file)
     errmsg = "Only verify and check-novalidate subcommands are supported."
     print(errmsg, file=sys.stderr)
     return 2
