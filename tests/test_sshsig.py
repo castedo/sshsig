@@ -85,6 +85,7 @@ TuWmFFLbjPQf1f9r1+/bwquZxapoKNVJfg7IYTfKFI9zKve3z3NLZ52+7eoqYaZsuzjN/a
 msg_sig_pair_cases = [
     msg_sig_pair_of_commit,
     msg_sig_pair_hola_mundo,
+    msg_sig_pair_rsa,
 ]
 
 

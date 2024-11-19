@@ -11,7 +11,8 @@ from collections.abc import ByteString
 from typing import Any, ClassVar
 
 import cryptography.exceptions
-from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ed25519, rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from .binary_io import SshReader
@@ -135,7 +136,7 @@ class RsaPublicKey(PublicKey):
 
     def verify(self, signature: bytes, message: bytes) -> None:
         try:
-            raise NotImplementedError
+            self._impl.verify(signature, message, padding.PKCS1v15(), hashes.SHA512())
         except cryptography.exceptions.InvalidSignature as ex:
             raise InvalidSignature(ex)
 
@@ -162,5 +163,5 @@ class RsaAlgorithm(PublicKeyAlgorithm):
         return pkt.read_string()
 
 PublicKeyAlgorithm.supported["ssh-rsa"] = RsaAlgorithm()
-# PublicKeyAlgorithm.supported["rsa-sha2-256"] = PublicKeyAlgorithm.supported["ssh-rsa"]
-# PublicKeyAlgorithm.supported["rsa-sha2-512"] = PublicKeyAlgorithm.supported["ssh-rsa"]
+#PublicKeyAlgorithm.supported["rsa-sha2-256"] = PublicKeyAlgorithm.supported["ssh-rsa"]
+PublicKeyAlgorithm.supported["rsa-sha2-512"] = PublicKeyAlgorithm.supported["ssh-rsa"]
