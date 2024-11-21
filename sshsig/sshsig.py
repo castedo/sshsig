@@ -8,16 +8,17 @@ import binascii
 import hashlib
 import io
 from collections.abc import ByteString, Iterable
-from typing import BinaryIO
+from typing import BinaryIO, ClassVar
 
 from .binary_io import SshReader, SshWriter
-from .ssh_public_key import PublicKey, PublicKeyAlgorithm, InvalidSignature
+from .ssh_public_key import PublicKey, PublicKeyAlgorithm
+from .ssh_public_key import InvalidSignature as InvalidSignature
 
 
-SshsigError = InvalidSignature
-
-class UnsupportedVersion(Exception):
-    pass
+# SSHSIG armored format, blob format, and signed data are documented in a file named
+# `PROTOCOL.sshsig` which is archived from https://github.com/openssh/openssh-portable
+# at https://archive.softwareheritage.org/
+# swh:1:cnt:78457ddfc653519c056e36c79525712dafba4e6e
 
 
 def ssh_enarmor_sshsig(raw: bytes) -> str:
@@ -83,61 +84,43 @@ class SshsigWrapper:
 
 
 class SshsigSignature:
-    def __init__(
-        self,
-        *,
-        version: int = 0x01,
-        public_key: bytes,
-        namespace: bytes = b"",
-        reserved: bytes = b"",
-        hash_algo: bytes,
-        signature: bytes,
-    ):
-        self.version = version
-        self.public_key = public_key
-        self.namespace = namespace
-        self.reserved = reserved
-        self.hash_algo = hash_algo
-        self.signature = signature
+    VERSION: ClassVar[int] = 0x1
 
-    @staticmethod
-    def from_bytes(buf: ByteString) -> SshsigSignature:
+    public_key: bytes
+    namespace: bytes
+    hash_algo: bytes
+    signature: bytes
+
+    def __init__(self, buf: ByteString):
         pkt = SshReader.from_bytes(buf)
-        magic = pkt.read(6)
-        if magic != b"SSHSIG":
-            raise ValueError("magic preamble not found")
+        if pkt.read(6) != b"SSHSIG":
+            raise ValueError("SSH Signature magic preamble not found.")
         version = pkt.read_uint32()
-        if version != 0x01:
-            raise UnsupportedVersion(version)
-        return SshsigSignature(
-            version=version,
-            public_key=pkt.read_string(),
-            namespace=pkt.read_string(),
-            reserved=pkt.read_string(),
-            hash_algo=pkt.read_string(),
-            signature=pkt.read_string(),
-        )
+        if version != SshsigSignature.VERSION:
+            raise NotImplementedError(f"SSH Signature format version {version}.")
+        self.public_key = pkt.read_string()
+        self.namespace = pkt.read_string()
+        pkt.read_string()  # reserved field to be ignored
+        self.hash_algo = pkt.read_string()
+        self.signature = pkt.read_string()
 
-    def to_bytes(self) -> bytes:
+    def __bytes__(self) -> bytes:
         pkt = SshWriter(io.BytesIO())
         pkt.write(b"SSHSIG")
-        pkt.write_uint32(self.version)
-        if self.version == 0x01:
-            pkt.write_string(self.public_key)
-            pkt.write_string(self.namespace)
-            pkt.write_string(self.reserved)
-            pkt.write_string(self.hash_algo)
-            pkt.write_string(self.signature)
-        else:
-            raise UnsupportedVersion(self.version)
+        pkt.write_uint32(SshsigSignature.VERSION)
+        pkt.write_string(self.public_key)
+        pkt.write_string(self.namespace)
+        pkt.write_string(b"")  # reserved field to be ignored
+        pkt.write_string(self.hash_algo)
+        pkt.write_string(self.signature)
         return pkt.output_fh.getvalue()
 
     @staticmethod
     def from_armored(buf: str) -> SshsigSignature:
-        return SshsigSignature.from_bytes(ssh_dearmor_sshsig(buf))
+        return SshsigSignature(ssh_dearmor_sshsig(buf))
 
     def to_armored(self) -> str:
-        return ssh_enarmor_sshsig(self.to_bytes())
+        return ssh_enarmor_sshsig(bytes(self))
 
 
 def hash_file(msg_file: BinaryIO, hash_algo_name: str) -> bytes:
@@ -156,6 +139,13 @@ def sshsig_verify(
     msg_file: BinaryIO,
     namespace: str,
 ) -> PublicKey:
+    """Verify the SSHSIG signature is for the input message and namespace.
+
+    The SSHSIG signature is verified to be for the namespace and the embedded
+    public key signature is valid for the provided input message.
+
+    Returns: The cryptographic public key embedded inside the SSHSIG signature.
+    """
     # The intention of this implementation is to reproduce (approximately)
     # the behaviour of the sshsig_verify_fd function of the ssh-keygen C file:
     # sshsig.c

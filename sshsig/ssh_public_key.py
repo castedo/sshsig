@@ -1,6 +1,7 @@
 # (c) 2018 Mantas Mikulėnas <grawity@gmail.com>
 # (c) 2024 E. Castedo Ellerman <castedo@castedo.com>
 # Released under the MIT License (https://spdx.org/licenses/MIT)
+# fmt: off
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from abc import ABC, abstractmethod
 from collections.abc import ByteString
 from typing import Any, ClassVar
 
-import cryptography.exceptions
+from cryptography.exceptions import InvalidSignature as InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -19,9 +20,6 @@ from .binary_io import SshReader
 
 
 class UnsupportedKeyType(Exception):
-    pass
-
-class InvalidSignature(Exception):
     pass
 
 
@@ -55,7 +53,13 @@ class PublicKeyAlgorithm(ABC):
 class PublicKey(ABC):
 
     @abstractmethod
-    def verify(self, signature: bytes, message: bytes) -> None: ...
+    def verify(self, signature: bytes, message: bytes) -> None:
+        """Verify the message is signed by signature.
+
+        Raises:
+          InvalidSignature
+        """
+        ...
 
     @abstractmethod
     def open_ssh_str(self) -> str: ...
@@ -84,7 +88,7 @@ class PublicKey(ABC):
         return algo.load_public_key(pkt)
 
     @staticmethod
-    def from_ssh_encoding(buf : bytes) -> PublicKey:
+    def from_ssh_encoding(buf: bytes) -> PublicKey:
         pkt = SshReader.from_bytes(buf)
         algo = PublicKeyAlgorithm.from_ssh_encoding(pkt)
         return algo.load_public_key(pkt)
@@ -98,10 +102,7 @@ class Ed25519PublicKey(PublicKey):
         self._raw_key = raw_key
 
     def verify(self, signature: bytes, message: bytes) -> None:
-        try:
-            self._impl.verify(signature, message)
-        except cryptography.exceptions.InvalidSignature as ex:
-            raise InvalidSignature(ex)
+        self._impl.verify(signature, message)
 
     def open_ssh_str(self) -> str:
         return self._impl.public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH).decode()
@@ -135,10 +136,7 @@ class RsaPublicKey(PublicKey):
         self._n = n
 
     def verify(self, signature: bytes, message: bytes) -> None:
-        try:
-            self._impl.verify(signature, message, padding.PKCS1v15(), hashes.SHA512())
-        except cryptography.exceptions.InvalidSignature as ex:
-            raise InvalidSignature(ex)
+        self._impl.verify(signature, message, padding.PKCS1v15(), hashes.SHA512())
 
     def open_ssh_str(self) -> str:
         return self._impl.public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH).decode()
@@ -163,5 +161,5 @@ class RsaAlgorithm(PublicKeyAlgorithm):
         return pkt.read_string()
 
 PublicKeyAlgorithm.supported["ssh-rsa"] = RsaAlgorithm()
-#PublicKeyAlgorithm.supported["rsa-sha2-256"] = PublicKeyAlgorithm.supported["ssh-rsa"]
+# PublicKeyAlgorithm.supported["rsa-sha2-256"] = PublicKeyAlgorithm.supported["ssh-rsa"]
 PublicKeyAlgorithm.supported["rsa-sha2-512"] = PublicKeyAlgorithm.supported["ssh-rsa"]

@@ -1,3 +1,7 @@
+# (c) 2024 E. Castedo Ellerman <castedo@castedo.com>
+# Released under the MIT License (https://spdx.org/licenses/MIT)
+# fmt: off
+
 from pathlib import Path
 from unittest import TestCase
 
@@ -93,13 +97,11 @@ crazy_ascii = "Nobody expects the Spanish ..."
 crazy_unicode = "Nobody expects 🥘💃🐂 ..."
 
 
-def good_check_novalidate(
-    message: str, signature: str, namespace: str = "git"
-) -> bool:
+def good_check_novalidate(message: str, signature: str, namespace: str = "git") -> bool:
     try:
         ssh_keygen.check_signature(message, signature, namespace)
         return True
-    except sshsig.SshsigError:
+    except sshsig.InvalidSignature:
         return False
 
 class SshKeygenCheckNoValidate(TestCase):
@@ -135,7 +137,7 @@ def good_verify(message: str, signers, signature: str) -> bool:
     try:
         ssh_keygen.verify(message, signature, signers)
         return True
-    except sshsig.SshsigError:
+    except sshsig.InvalidSignature:
         return False
 
 class VerifyTests(TestCase):
@@ -167,6 +169,6 @@ class ParseSignature(TestCase):
             armored = case[1]
             with self.subTest(armored=armored):
                 buf = sshsig.ssh_dearmor_sshsig(armored)
-                sig = sshsig.SshsigSignature.from_bytes(buf)
+                sig = sshsig.SshsigSignature(buf)
                 buf2 = sshsig.ssh_dearmor_sshsig(sig.to_armored())
                 self.assertEqual(buf, buf2)

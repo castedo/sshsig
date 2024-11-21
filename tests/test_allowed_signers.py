@@ -1,3 +1,7 @@
+# (c) 2024 E. Castedo Ellerman <castedo@castedo.com>
+# Released under the MIT License (https://spdx.org/licenses/MIT)
+# fmt: off
+
 from io import StringIO
 from pathlib import Path
 from unittest import TestCase
@@ -8,7 +12,6 @@ from sshsig.ssh_public_key import PublicKey
 
 TESTDATA_DIR = Path(__file__).parent.parent / "testdata"
 SSHSIG_CASES = list((TESTDATA_DIR / "sshsig").iterdir())
-
 
 key0 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJY08ynqE/VoH690nSN+MUxMzAbfNcMdUQr+5ltIskMt"
 key1 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIQdQut465od3lkVyVW6038PcD/wSGX/2ij3RcQZTAqt"
@@ -109,7 +112,9 @@ foo@example.com {key0}
         )
         expect = [
             AllowedSigner(
-                "ssh-keygen parses this", None, PublicKey.from_open_ssh_str(key0),
+                "ssh-keygen parses this",
+                None,
+                PublicKey.from_open_ssh_str(key0),
             ),
         ]
         self.assertEqual(expect, load_allowed_signers_file(text))
@@ -135,7 +140,7 @@ foo@b.ar namespaces="git,got" {key1}
             AllowedSigner(
                 "foo@b.ar",
                 {'namespaces': "git,got"},
-                PublicKey.from_open_ssh_str(key1)
+                PublicKey.from_open_ssh_str(key1),
             ),
         ]
         self.assertEqual(expect, load_allowed_signers_file(text))
@@ -150,7 +155,7 @@ foo@b.ar valid-after="19801201",valid-before="20010201" {key0}
             AllowedSigner(
                 "foo@b.ar",
                 {"valid-after": "19801201", "valid-before": "20010201"},
-                PublicKey.from_open_ssh_str(key0)
+                PublicKey.from_open_ssh_str(key0),
             ),
         ]
         self.assertEqual(expect, load_allowed_signers_file(text))
