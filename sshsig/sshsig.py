@@ -185,7 +185,7 @@ def check_signature(
     try:
         sshsig_outer = SshsigSignature.from_armored(armored_signature)
     except ValueError as ex:
-        raise InvalidSignature(ex)
+        raise InvalidSignature from ex
     return sshsig_verify(sshsig_outer, msg_file, namespace)
 
 

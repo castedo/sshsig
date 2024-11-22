@@ -6,17 +6,22 @@ from __future__ import annotations
 
 import io
 import struct
-from collections.abc import ByteString
-from typing import BinaryIO, cast
+from typing import Any, BinaryIO, TYPE_CHECKING, cast
+
+
+if TYPE_CHECKING:
+    BytesLike = bytes | bytearray | memoryview
 
 
 class SshReader:
-    @staticmethod
-    def from_bytes(buf: ByteString) -> SshReader:
-        return SshReader(io.BytesIO(buf))
+    def __init__(self, ins: BinaryIO | BytesLike):
+        if isinstance(ins, (bytes, bytearray, memoryview)):
+            ins = io.BytesIO(ins)
+        self.input_fh = ins
 
-    def __init__(self, input_fh: BinaryIO):
-        self.input_fh = input_fh
+    @staticmethod
+    def from_bytes(buf: BytesLike) -> SshReader:
+        return SshReader(buf)
 
     def read(self, length: int = -1) -> bytes:
         buf = self.input_fh.read(length)
@@ -25,39 +30,37 @@ class SshReader:
         return buf
 
     def read_byte(self) -> int:
-        buf = self.read(1)
-        (val,) = struct.unpack("!B", buf)
-        return cast(int, val)
+        return cast(int, self._read_and_unpack(1, "!B"))
 
     def read_uint32(self) -> int:
-        buf = self.read(4)
-        (val,) = struct.unpack("!L", buf)
-        return cast(int, val)
+        return cast(int, self._read_and_unpack(4, "!L"))
 
     def read_bool(self) -> bool:
-        buf = self.read(1)
-        (val,) = struct.unpack("!?", buf)
-        return cast(bool, val)
+        return cast(bool, self._read_and_unpack(1, "!?"))
 
     def read_string(self) -> bytes:
         length = self.read_uint32()
-        buf = self.read(length)
-        return buf
+        return self.read(length)
 
     def read_string_pkt(self) -> SshReader:
-        buf = self.read_string()
-        return SshReader.from_bytes(buf)
+        return SshReader(self.read_string())
 
     def read_mpint(self) -> int:
         buf = self.read_string()
         return int.from_bytes(buf, byteorder="big", signed=False)
+
+    def _read_and_unpack(self, length: int, frmt: str) -> Any:
+        try:
+            return struct.unpack(frmt, self.read(length))[0]
+        except struct.error as ex:
+            raise ValueError from ex
 
 
 class SshWriter:
     def __init__(self, output_fh: io.BytesIO):
         self.output_fh = output_fh
 
-    def write(self, b: ByteString) -> int:
+    def write(self, b: BytesLike) -> int:
         return self.output_fh.write(b)
 
     def flush(self) -> None:
@@ -75,7 +78,7 @@ class SshWriter:
         buf = struct.pack("!?", val)
         return self.write(buf)
 
-    def write_string(self, val: ByteString) -> int:
+    def write_string(self, val: BytesLike) -> int:
         buf = struct.pack("!L", len(val)) + val
         return self.write(buf)
 

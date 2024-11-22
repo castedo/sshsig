@@ -1,3 +1,6 @@
+# (c) 2024 E. Castedo Ellerman <castedo@castedo.com>
+# Released under the MIT License (https://spdx.org/licenses/MIT)
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -20,6 +23,12 @@ class AllowedSigner:
 
     @staticmethod
     def parse(line: str) -> AllowedSigner:
+        """Parse a line of an ssh-keygen "allower signers" file.
+
+        Raises:
+            ValueError: If the line is not properly formatted.
+            NotImplementedError: If the public key algorithm is not supported.
+        """
         (principals, line) = lop_principals(line)
         options = None
         if detect_options(line):
@@ -35,11 +44,11 @@ def lop_principals(line: str) -> tuple[str, str]:
         (principals, _, line) = line[1:].partition('"')
         if not line:
             msg = "No matching double quote character for line ('{}')."
-            raise SyntaxError(msg.format(line))
+            raise ValueError(msg.format(line))
         return (principals, line.lstrip())
     parts = line.split(maxsplit=1)
     if len(parts) < 2:
-        raise SyntaxError(f"Invalid line ('{line}').")
+        raise ValueError(f"Invalid line ('{line}').")
     return (parts[0], parts[1])
 
 
@@ -49,8 +58,11 @@ def detect_options(line: str) -> bool:
 
 
 def lop_options(line: str) -> tuple[AllowedSignerOptions, str]:
-    """Return (options, rest_of_line)."""
+    """Return (options, rest_of_line).
 
+    Raises:
+        ValueError
+    """
     options: AllowedSignerOptions = dict()
     while line and not line[0].isspace():
         line = lop_one_option(options, line)
@@ -66,7 +78,7 @@ def lop_one_option(options: AllowedSignerOptions, line: str) -> str:
         return lopped
     if lopped := lop_option(options, line, "valid-before"):
         return lopped
-    raise SyntaxError(f"Invalid option ('{line}').")
+    raise ValueError(f"Invalid option ('{line}').")
 
 
 def lop_flag(options: AllowedSignerOptions, line: str, opt_name: str) -> str | None:
@@ -79,26 +91,28 @@ def lop_flag(options: AllowedSignerOptions, line: str, opt_name: str) -> str | N
     return line[i:]
 
 
-def lop_option(
-    options: AllowedSignerOptions, line: str, opt_name: str
-) -> str | None:
+def lop_option(options: AllowedSignerOptions, line: str, opt_name: str) -> str | None:
     i = len(opt_name)
     if line[:i].lower() != opt_name:
         return None
     if opt_name in options:
-        raise SyntaxError(f"Multiple '{opt_name}' clauses ('{line}')")
+        raise ValueError(f"Multiple '{opt_name}' clauses ('{line}')")
     if line[i : i + 2] != '="':
-        raise SyntaxError(f"Option '{opt_name}' missing '=\"' ('{line}')")
+        raise ValueError(f"Option '{opt_name}' missing '=\"' ('{line}')")
     (value, _, line) = line[i + 2 :].partition('"')
     if not line:
-        raise SyntaxError(f"No matching quote for option '{opt_name}' ('{line}')")
+        raise ValueError(f"No matching quote for option '{opt_name}' ('{line}')")
     options[opt_name] = value
     return line[1:] if line[0] == "," else line
 
 
 def load_allowed_signers_file(file: Union[TextIO, Path]) -> Iterable[AllowedSigner]:
-    """Read public keys in "allowed signers" format per ssh-keygen."""
+    """Read public keys in "allowed signers" format per ssh-keygen.
 
+    Raises:
+        ValueError: If the file is not properly formatted.
+        NotImplementedError: If a public key algorithm is not supported.
+    """
     # The intention of this implementation is to reproduce the behaviour of the
     # parse_principals_key_and_options function of the following sshsig.c file:
     # https://archive.softwareheritage.org/
@@ -110,20 +124,26 @@ def load_allowed_signers_file(file: Union[TextIO, Path]) -> Iterable[AllowedSign
     ret = list()
     for line in file.readlines():
         if "\f" in line:
-            raise SyntaxError(f"Form feed character not supported: ('{line}').")
+            raise ValueError(f"Form feed character not supported: ('{line}').")
         if "\v" in line:
-            raise SyntaxError(f"Vertical tab character not supported: ('{line}').")
+            raise ValueError(f"Vertical tab character not supported: ('{line}').")
         line = line.strip("\n\r")
         if line and line[0] not in ["#", "\0"]:
             ret.append(AllowedSigner.parse(line))
     return ret
 
 
-def for_git_allowed_keys(allowed_signers: Iterable[AllowedSigner]) -> Iterable[PublicKey]:
-    """Convert a list of ssh-keygen "allowed signers" entries in "for-git" sub-format.
+def for_git_allowed_keys(
+    allowed_signers: Iterable[AllowedSigner],
+) -> Iterable[PublicKey]:
+    """Convert ssh-keygen "allowed signers" entries to "just-a-list-for-git" sub-format.
 
-    In the "for-git" sub-format, only the "*" value is accepted in the principles field.
-    The only allowed signers option accepted is 'namespaces="git"'.
+    In the "just-a-list-for-git" sub-format, only the "*" value is accepted in
+    the principles field. The only allowed signers option accepted is 'namespaces="git"'.
+
+    Raises:
+        ValueError: If any ssh-keygen "allowed signers" feature is used that is
+            not valid in the "just-a-list-for-git" sub-format.
     """
     ret = list()
     for allowed in allowed_signers:

@@ -6,12 +6,11 @@
 from __future__ import annotations
 
 import binascii
-import struct
 from abc import ABC, abstractmethod
 from collections.abc import ByteString
 from typing import Any, ClassVar
 
-from cryptography.exceptions import InvalidSignature as InvalidSignature
+import cryptography.exceptions
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -19,8 +18,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from .binary_io import SshReader
 
 
-class UnsupportedKeyType(Exception):
-    pass
+InvalidSignature = cryptography.exceptions.InvalidSignature
 
 
 class PublicKeyAlgorithm(ABC):
@@ -36,7 +34,8 @@ class PublicKeyAlgorithm(ABC):
     def from_key_type(key_type: str) -> PublicKeyAlgorithm:
         algo = PublicKeyAlgorithm.supported.get(key_type)
         if algo is None:
-            raise UnsupportedKeyType(key_type)
+            msg = f"Public key algorithm not supported: {key_type}."
+            raise NotImplementedError(msg)
         return algo
 
     @staticmethod
@@ -57,7 +56,7 @@ class PublicKey(ABC):
         """Verify the message is signed by signature.
 
         Raises:
-          InvalidSignature
+            InvalidSignature
         """
         ...
 
@@ -69,22 +68,25 @@ class PublicKey(ABC):
 
     @staticmethod
     def from_open_ssh_str(line: str) -> PublicKey:
+        """Create PublicKey from an OpenSSH format public key string.
+
+        Raises:
+            ValueError: If the input string is not a valid format or encoding.
+            NotImplementedError: If the public key algorithm is not supported.
+        """
         parts = line.split(maxsplit=2)
         if len(parts) < 2:
             msg = "Not space-separated OpenSSH format public key ('{}')."
             raise ValueError(msg.format(line))
         key_type = parts[0]
-        algo = PublicKeyAlgorithm.supported.get(key_type)
-        if algo is None:
-            raise UnsupportedKeyType(key_type)
-        buf = binascii.a2b_base64(parts[1])
-        pkt = SshReader.from_bytes(buf)
         try:
-            decoded_key_type = pkt.read_string().decode()
-        except struct.error:
-            decoded_key_type = None
-        if decoded_key_type != key_type:
+            buf = binascii.a2b_base64(parts[1])
+        except binascii.Error as ex:
+            raise ValueError from ex
+        pkt = SshReader.from_bytes(buf)
+        if pkt.read_string().decode() != key_type:
             raise ValueError("Improperly encoded public key.")
+        algo = PublicKeyAlgorithm.from_key_type(key_type)
         return algo.load_public_key(pkt)
 
     @staticmethod
