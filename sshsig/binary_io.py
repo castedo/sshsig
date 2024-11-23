@@ -1,6 +1,7 @@
 # (c) 2018 Mantas Mikulėnas <grawity@gmail.com>
 # (c) 2024 E. Castedo Ellerman <castedo@castedo.com>
 # Released under the MIT License (https://spdx.org/licenses/MIT)
+# fmt: off
 
 from __future__ import annotations
 
@@ -14,6 +15,8 @@ if TYPE_CHECKING:
 
 
 class SshReader:
+    """All read_ methods may raise ValueError."""
+
     def __init__(self, ins: BinaryIO | BytesLike):
         if isinstance(ins, (bytes, bytearray, memoryview)):
             ins = io.BytesIO(ins)
@@ -54,6 +57,11 @@ class SshReader:
             return struct.unpack(frmt, self.read(length))[0]
         except struct.error as ex:
             raise ValueError from ex
+
+
+def ssh_read_string_pair(buf: BinaryIO | BytesLike) -> tuple[bytes, bytes]:
+    pkt = SshReader(buf)
+    return (pkt.read_string(), pkt.read_string())
 
 
 class SshWriter:

@@ -11,13 +11,11 @@ from collections.abc import ByteString, Iterable
 from typing import BinaryIO, ClassVar
 
 from .binary_io import SshReader, SshWriter
-from .ssh_public_key import PublicKey, PublicKeyAlgorithm
+from .ssh_public_key import PublicKey
 
-
-# SSHSIG armored format, blob format, and signed data are documented in a file named
-# `PROTOCOL.sshsig` which is archived from https://github.com/openssh/openssh-portable
-# at https://archive.softwareheritage.org/
-# swh:1:cnt:78457ddfc653519c056e36c79525712dafba4e6e
+# SSHSIG armored, blob, and signed data formats are documented in a file named
+# `PROTOCOL.sshsig` which is archived from https://github.com/openssh/openssh-portable at
+# https://archive.softwareheritage.org/swh:1:cnt:78457ddfc653519c056e36c79525712dafba4e6e
 
 
 class InvalidSignature(Exception):
@@ -85,6 +83,9 @@ class SshsigWrapper:
         pkt.write_string(self.hash)
         return pkt.output_fh.getvalue()
 
+    def __bytes__(self) -> bytes:
+        return self.to_bytes()
+
 
 class SshsigSignature:
     VERSION: ClassVar[int] = 0x1
@@ -126,7 +127,9 @@ class SshsigSignature:
         return ssh_enarmor_sshsig(bytes(self))
 
 
-def hash_file(msg_file: BinaryIO, hash_algo_name: str) -> bytes:
+def hash_file(msg_file: BinaryIO, hash_algo_name: str | bytes) -> bytes:
+    if isinstance(hash_algo_name, bytes):
+        hash_algo_name = hash_algo_name.decode("ascii")
     hash_algo = hash_algo_name.lower()
     if hash_algo not in hashlib.algorithms_guaranteed:
         msg = "Signature hash algo '{}' not supported across platforms by Python."
@@ -160,14 +163,14 @@ def sshsig_verify(
         errmsg = "Namespace of signature {} != {}"
         raise InvalidSignature(errmsg.format(sshsig_outer.namespace, _namespace))
 
-    msg_hash = hash_file(msg_file, sshsig_outer.hash_algo.decode("ascii"))
+    msg_hash = hash_file(msg_file, sshsig_outer.hash_algo)
 
     toverify = SshsigWrapper(
         namespace=_namespace, hash_algo=sshsig_outer.hash_algo, hash=msg_hash
-    )
-    sigdata = PublicKeyAlgorithm.parse_signature(sshsig_outer.signature)
+    ).to_bytes()
+
     pub_key = PublicKey.from_ssh_encoding(sshsig_outer.public_key)
-    if err := pub_key.verification_error(sigdata, toverify.to_bytes()):
+    if err := pub_key.verification_error(sshsig_outer.signature, toverify):
         raise InvalidSignature from err
     return pub_key
 

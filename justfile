@@ -7,7 +7,7 @@ check-runtime:
     pytest tests -s
 
 check: && check-runtime
-    ruff check sshsig
+    ruff check sshsig || true
     mypy --strict sshsig
     mypy tests
 

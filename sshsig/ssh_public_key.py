@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import binascii
 from abc import ABC, abstractmethod
-from collections.abc import ByteString
 from typing import Any, ClassVar
 
 import cryptography.exceptions
@@ -15,20 +14,26 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-from .binary_io import SshReader
+from .binary_io import SshReader, ssh_read_string_pair
 
 
 class PublicKeyAlgorithm(ABC):
     supported: ClassVar[dict[str, PublicKeyAlgorithm]] = dict()
 
+    @staticmethod
+    def init_supported_algos() -> None:
+        PublicKeyAlgorithm.supported = {
+            "ssh-ed25519": Ed25519Algorithm(),
+            "ssh-rsa": RsaAlgorithm(),
+        }
+
     @abstractmethod
     def load_public_key(self, pkt: SshReader) -> PublicKey: ...
 
-    @abstractmethod
-    def _read_signature(self, pkt: SshReader) -> bytes: ...
-
     @staticmethod
     def from_key_type(key_type: str) -> PublicKeyAlgorithm:
+        if not PublicKeyAlgorithm.supported:
+            PublicKeyAlgorithm.init_supported_algos()
         algo = PublicKeyAlgorithm.supported.get(key_type)
         if algo is None:
             msg = f"Public key algorithm not supported: {key_type}."
@@ -38,12 +43,6 @@ class PublicKeyAlgorithm(ABC):
     @staticmethod
     def from_ssh_encoding(pkt: SshReader) -> PublicKeyAlgorithm:
         return PublicKeyAlgorithm.from_key_type(pkt.read_string().decode())
-
-    @staticmethod
-    def parse_signature(buf: ByteString) -> bytes:
-        pkt = SshReader.from_bytes(buf)
-        algo = PublicKeyAlgorithm.from_ssh_encoding(pkt)
-        return algo._read_signature(pkt)
 
 
 class PublicKey(ABC):
@@ -99,7 +98,7 @@ class PublicKey(ABC):
             buf = binascii.a2b_base64(parts[1])
         except binascii.Error as ex:
             raise ValueError from ex
-        pkt = SshReader.from_bytes(buf)
+        pkt = SshReader(buf)
         if pkt.read_string().decode() != key_type:
             raise ValueError("Improperly encoded public key.")
         algo = PublicKeyAlgorithm.from_key_type(key_type)
@@ -107,10 +106,20 @@ class PublicKey(ABC):
 
     @staticmethod
     def from_ssh_encoding(buf: bytes) -> PublicKey:
-        pkt = SshReader.from_bytes(buf)
+        pkt = SshReader(buf)
         algo = PublicKeyAlgorithm.from_ssh_encoding(pkt)
         return algo.load_public_key(pkt)
 
+
+##############################################################################
+# Ed25519 Public Key Algo
+#
+# https://tools.ietf.org/html/draft-ietf-curdle-ssh-ed25519-ed448-00#section-4
+
+class Ed25519Algorithm(PublicKeyAlgorithm):
+
+    def load_public_key(self, pkt: SshReader) -> PublicKey:
+        return Ed25519PublicKey(pkt.read_string())
 
 class Ed25519PublicKey(PublicKey):
     def __init__(self, raw_key: bytes):
@@ -120,8 +129,10 @@ class Ed25519PublicKey(PublicKey):
         self._raw_key = raw_key
 
     def verification_error(self, signature: bytes, message: bytes) -> Exception | None:
+        sig_algo, raw_signature = ssh_read_string_pair(signature)
+        assert sig_algo == b"ssh-ed25519"
         try:
-            self._impl.verify(signature, message)
+            self._impl.verify(raw_signature, message)
             return None
         except cryptography.exceptions.InvalidSignature as ex:
             return ex
@@ -137,17 +148,18 @@ class Ed25519PublicKey(PublicKey):
     def __hash__(self) -> int:
         return hash(self._raw_key)
 
-class Ed25519Algorithm(PublicKeyAlgorithm):
-    # https://tools.ietf.org/html/draft-ietf-curdle-ssh-ed25519-ed448-00#section-4
+
+##############################################################################
+# RSA Public Key Algo
+#
+# https://tools.ietf.org/html/rfc4253#section-6.6
+
+class RsaAlgorithm(PublicKeyAlgorithm):
 
     def load_public_key(self, pkt: SshReader) -> PublicKey:
-        return Ed25519PublicKey(pkt.read_string())
-
-    def _read_signature(self, pkt: SshReader) -> bytes:
-        return pkt.read_string()
-
-PublicKeyAlgorithm.supported["ssh-ed25519"] = Ed25519Algorithm()
-
+        e = pkt.read_mpint()
+        n = pkt.read_mpint()
+        return RsaPublicKey(e, n)
 
 class RsaPublicKey(PublicKey):
     def __init__(self, e: int, n: int):
@@ -158,8 +170,10 @@ class RsaPublicKey(PublicKey):
         self._n = n
 
     def verification_error(self, signature: bytes, message: bytes) -> Exception | None:
+        sig_algo, raw_signature = ssh_read_string_pair(signature)
+        assert sig_algo == b"rsa-sha2-512"
         try:
-            self._impl.verify(signature, message, padding.PKCS1v15(), hashes.SHA512())
+            self._impl.verify(raw_signature, message, padding.PKCS1v15(), hashes.SHA512())
             return None
         except cryptography.exceptions.InvalidSignature as ex:
             return ex
@@ -174,18 +188,3 @@ class RsaPublicKey(PublicKey):
 
     def __hash__(self) -> int:
         return hash((self._e, self._n))
-
-class RsaAlgorithm(PublicKeyAlgorithm):
-    # https://tools.ietf.org/html/rfc4253#section-6.6
-
-    def load_public_key(self, pkt: SshReader) -> PublicKey:
-        e = pkt.read_mpint()
-        n = pkt.read_mpint()
-        return RsaPublicKey(e, n)
-
-    def _read_signature(self, pkt: SshReader) -> bytes:
-        return pkt.read_string()
-
-PublicKeyAlgorithm.supported["ssh-rsa"] = RsaAlgorithm()
-# PublicKeyAlgorithm.supported["rsa-sha2-256"] = PublicKeyAlgorithm.supported["ssh-rsa"]
-PublicKeyAlgorithm.supported["rsa-sha2-512"] = PublicKeyAlgorithm.supported["ssh-rsa"]
