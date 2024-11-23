@@ -12,13 +12,16 @@ from typing import BinaryIO, ClassVar
 
 from .binary_io import SshReader, SshWriter
 from .ssh_public_key import PublicKey, PublicKeyAlgorithm
-from .ssh_public_key import InvalidSignature as InvalidSignature
 
 
 # SSHSIG armored format, blob format, and signed data are documented in a file named
 # `PROTOCOL.sshsig` which is archived from https://github.com/openssh/openssh-portable
 # at https://archive.softwareheritage.org/
 # swh:1:cnt:78457ddfc653519c056e36c79525712dafba4e6e
+
+
+class InvalidSignature(Exception):
+    pass
 
 
 def ssh_enarmor_sshsig(raw: bytes) -> str:
@@ -164,7 +167,8 @@ def sshsig_verify(
     )
     sigdata = PublicKeyAlgorithm.parse_signature(sshsig_outer.signature)
     pub_key = PublicKey.from_ssh_encoding(sshsig_outer.public_key)
-    pub_key.verify(sigdata, toverify.to_bytes())
+    if err := pub_key.verification_error(sigdata, toverify.to_bytes()):
+        raise InvalidSignature from err
     return pub_key
 
 

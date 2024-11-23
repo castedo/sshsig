@@ -18,9 +18,6 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from .binary_io import SshReader
 
 
-InvalidSignature = cryptography.exceptions.InvalidSignature
-
-
 class PublicKeyAlgorithm(ABC):
     supported: ClassVar[dict[str, PublicKeyAlgorithm]] = dict()
 
@@ -52,13 +49,32 @@ class PublicKeyAlgorithm(ABC):
 class PublicKey(ABC):
 
     @abstractmethod
-    def verify(self, signature: bytes, message: bytes) -> None:
-        """Verify the message is signed by signature.
+    def verification_error(self, signature: bytes, message: bytes) -> Exception | None:
+        """Verify the signature matches the message.
+
+        Returns:
+            None if the signature is verified to match the message.
+            Otherwise, an exception object describing the reason the signature does
+            not match the message.
 
         Raises:
-            InvalidSignature
+            Possible exceptions for reasons other than the public key determining
+            the signature does not match the message.
         """
         ...
+
+    def try_verify(self, signature: bytes, message: bytes) -> None:
+        """Verify the signature matches the message.
+
+        Subclasses should override verification_error, not try_verify.
+
+        Raises:
+            An exception object describing the reason the signature does
+            not match the message.
+        """
+        if err := self.verification_error(signature, message):
+            raise err
+        return None
 
     @abstractmethod
     def open_ssh_str(self) -> str: ...
@@ -103,8 +119,12 @@ class Ed25519PublicKey(PublicKey):
         ## hold on to raw key to perform correct equality function
         self._raw_key = raw_key
 
-    def verify(self, signature: bytes, message: bytes) -> None:
-        self._impl.verify(signature, message)
+    def verification_error(self, signature: bytes, message: bytes) -> Exception | None:
+        try:
+            self._impl.verify(signature, message)
+            return None
+        except cryptography.exceptions.InvalidSignature as ex:
+            return ex
 
     def open_ssh_str(self) -> str:
         return self._impl.public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH).decode()
@@ -137,8 +157,12 @@ class RsaPublicKey(PublicKey):
         self._e = e
         self._n = n
 
-    def verify(self, signature: bytes, message: bytes) -> None:
-        self._impl.verify(signature, message, padding.PKCS1v15(), hashes.SHA512())
+    def verification_error(self, signature: bytes, message: bytes) -> Exception | None:
+        try:
+            self._impl.verify(signature, message, padding.PKCS1v15(), hashes.SHA512())
+            return None
+        except cryptography.exceptions.InvalidSignature as ex:
+            return ex
 
     def open_ssh_str(self) -> str:
         return self._impl.public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH).decode()
