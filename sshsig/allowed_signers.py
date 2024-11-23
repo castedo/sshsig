@@ -12,18 +12,20 @@ from .ssh_public_key import PublicKey
 
 
 if TYPE_CHECKING:
-    AllowedSignerOptions = dict[str, bool | str]
+    AllowedSignerOptions = dict[str, str]
 
 
 @dataclass
 class AllowedSigner:
     principals: str
     options: AllowedSignerOptions | None
-    key: PublicKey
+    key_type: str
+    base64_key: str
+    comment: str | None = None  # "patterned after" sshd authorized keys file format
 
     @staticmethod
     def parse(line: str) -> AllowedSigner:
-        """Parse a line of an ssh-keygen "allower signers" file.
+        """Parse a line of an ssh-keygen "allowed signers" file.
 
         Raises:
             ValueError: If the line is not properly formatted.
@@ -33,8 +35,11 @@ class AllowedSigner:
         options = None
         if detect_options(line):
             (options, line) = lop_options(line)
-        pub_key = PublicKey.from_open_ssh_str(line)
-        return AllowedSigner(principals, options, pub_key)
+        parts = line.split(maxsplit=2)
+        if len(parts) < 2:
+            msg = "Not space-separated OpenSSH format public key ('{}')."
+            raise ValueError(msg.format(line))
+        return AllowedSigner(principals, options, *parts)
 
 
 def lop_principals(line: str) -> tuple[str, str]:
@@ -85,7 +90,7 @@ def lop_flag(options: AllowedSignerOptions, line: str, opt_name: str) -> str | N
     i = len(opt_name)
     if line[:i].lower() != opt_name:
         return None
-    options[opt_name] = True
+    options[opt_name] = ""
     if line[i : i + 1] == ",":
         i += 1
     return line[i:]
@@ -111,7 +116,6 @@ def load_allowed_signers_file(file: Union[TextIO, Path]) -> Iterable[AllowedSign
 
     Raises:
         ValueError: If the file is not properly formatted.
-        NotImplementedError: If a public key algorithm is not supported.
     """
     # The intention of this implementation is to reproduce the behaviour of the
     # parse_principals_key_and_options function of the following sshsig.c file:
@@ -144,6 +148,7 @@ def for_git_allowed_keys(
     Raises:
         ValueError: If any ssh-keygen "allowed signers" feature is used that is
             not valid in the "just-a-list-for-git" sub-format.
+        NotImplementedError: If a public key algorithm is not supported.
     """
     ret = list()
     for allowed in allowed_signers:
@@ -157,7 +162,8 @@ def for_git_allowed_keys(
             raise ValueError("Certificate keys not supported.")
         if "valid-before" in options or "valid-after" in options:
             raise ValueError("Allowed signer validation dates not supported.")
-        ret.append(allowed.key)
+        s = " ".join((allowed.key_type, allowed.base64_key))
+        ret.append(PublicKey.from_openssh_str(s))
     return ret
 
 

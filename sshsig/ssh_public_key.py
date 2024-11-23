@@ -77,13 +77,13 @@ class PublicKey(ABC):
         return None
 
     @abstractmethod
-    def open_ssh_str(self) -> str: ...
+    def openssh_str(self) -> str: ...
 
     def __str__(self) -> str:
-        return self.open_ssh_str()
+        return self.openssh_str()
 
     @staticmethod
-    def from_open_ssh_str(line: str) -> PublicKey:
+    def from_openssh_str(line: str) -> PublicKey:
         """Create PublicKey from an OpenSSH format public key string.
 
         Raises:
@@ -146,7 +146,7 @@ class Ed25519PublicKey(PublicKey):
         except cryptography.exceptions.InvalidSignature as ex:
             return ex
 
-    def open_ssh_str(self) -> str:
+    def openssh_str(self) -> str:
         return self._impl.public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH).decode()
 
     def __eq__(self, other: Any) -> bool:
@@ -197,7 +197,7 @@ class RsaPublicKey(PublicKey):
         except cryptography.exceptions.InvalidSignature as ex:
             return ex
 
-    def open_ssh_str(self) -> str:
+    def openssh_str(self) -> str:
         return self._impl.public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH).decode()
 
     def __eq__(self, other: Any) -> bool:
