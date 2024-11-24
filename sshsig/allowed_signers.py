@@ -169,3 +169,16 @@ def for_git_allowed_keys(
 
 def load_for_git_allowed_signers_file(file: Union[TextIO, Path]) -> Iterable[PublicKey]:
     return for_git_allowed_keys(load_allowed_signers_file(file))
+
+
+def save_for_git_allowed_signers_file(
+    src: set[PublicKey], out: Union[Path, TextIO]
+) -> None:
+    """Save keys for git to "allowed signers" format per ssh-keygen."""
+
+    if isinstance(out, Path):
+        with open(out, 'w') as f:
+            save_for_git_allowed_signers_file(src, f)
+    else:
+        for key in src:
+            out.write('* namespaces="git" {}\n'.format(key.openssh_str()))
