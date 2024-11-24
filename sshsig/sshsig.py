@@ -12,6 +12,7 @@ from typing import BinaryIO, ClassVar
 
 from .binary_io import SshReader, SshWriter
 from .ssh_public_key import PublicKey
+from .util import error_chain, excast
 
 # SSHSIG armored, blob, and signed data formats are documented in a file named
 # `PROTOCOL.sshsig` which is archived from https://github.com/openssh/openssh-portable at
@@ -140,17 +141,20 @@ def hash_file(msg_file: BinaryIO, hash_algo_name: str | bytes) -> bytes:
     return hobj.digest()
 
 
-def sshsig_verify(
+def do_sshsig_verify(
     sshsig_outer: SshsigSignature,
     msg_file: BinaryIO,
     namespace: str,
-) -> PublicKey:
+) -> PublicKey | InvalidSignature | NotImplementedError:
     """Verify the SSHSIG signature is for the input message and namespace.
 
     The SSHSIG signature is verified to be for the namespace and the embedded
     public key signature is valid for the provided input message.
 
-    Returns: The cryptographic public key embedded inside the SSHSIG signature.
+    Returns:
+        If no error, the cryptographic PublicKey embedded inside the SSHSIG signature.
+        ValueError: If the input string is not a valid format or encoding.
+        NotImplementedError: If the public key algorithm is not supported.
     """
     # The intention of this implementation is to reproduce (approximately)
     # the behaviour of the sshsig_verify_fd function of the ssh-keygen C file:
@@ -161,7 +165,7 @@ def sshsig_verify(
     _namespace = namespace.encode("ascii")
     if _namespace != sshsig_outer.namespace:
         errmsg = "Namespace of signature {} != {}"
-        raise InvalidSignature(errmsg.format(sshsig_outer.namespace, _namespace))
+        return InvalidSignature(errmsg.format(sshsig_outer.namespace, _namespace))
 
     msg_hash = hash_file(msg_file, sshsig_outer.hash_algo)
 
@@ -169,21 +173,35 @@ def sshsig_verify(
         namespace=_namespace, hash_algo=sshsig_outer.hash_algo, hash=msg_hash
     ).to_bytes()
 
-    pub_key = PublicKey.from_ssh_encoding(sshsig_outer.public_key)
-    if err := pub_key.verification_error(sshsig_outer.signature, toverify):
-        raise InvalidSignature from err
+    pub_key = PublicKey.do_from_ssh_encoding(sshsig_outer.public_key)
+    if isinstance(pub_key, NotImplementedError):
+        return pub_key
+    if isinstance(pub_key, ValueError):
+        return error_chain(InvalidSignature(), pub_key)
+    if err := pub_key.do_verify(sshsig_outer.signature, toverify):
+        return error_chain(InvalidSignature(), err)
     return pub_key
 
 
 def check_signature(
     msg_in: str | bytes | BinaryIO, armored_signature: str, namespace: str = "git"
 ) -> PublicKey:
+    return excast(do_check_signature(msg_in, armored_signature, namespace))
+
+
+def do_check_signature(
+    msg_in: str | bytes | BinaryIO, armored_signature: str, namespace: str = "git"
+) -> PublicKey | InvalidSignature | NotImplementedError:
     """Check that an ssh-keygen signature is a digital signature of the input message.
 
     This function implements functionality provided by:
     ```
     ssh-keygen -Y check-novalidate -n namespace -s armored_signature_file < msg_in
     ```
+    Returns:
+        If no error, the cryptographic PublicKey embedded inside the SSHSIG signature.
+        InvalidSignature: If signature is not a valid signature for the input message.
+        NotImplementedError: If a public key algorithm is not supported.
     """
 
     if isinstance(msg_in, str):
@@ -192,8 +210,8 @@ def check_signature(
     try:
         sshsig_outer = SshsigSignature.from_armored(armored_signature)
     except ValueError as ex:
-        raise InvalidSignature from ex
-    return sshsig_verify(sshsig_outer, msg_file, namespace)
+        return error_chain(InvalidSignature(), ex)
+    return do_sshsig_verify(sshsig_outer, msg_file, namespace)
 
 
 def verify(

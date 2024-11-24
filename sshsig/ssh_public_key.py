@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519, rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from .binary_io import SshReader, ssh_read_string_pair
+from .util import excast
 
 
 class PublicKeyAlgorithm(ABC):
@@ -33,12 +34,16 @@ class PublicKeyAlgorithm(ABC):
 
     @classmethod
     def from_name(cls, algo_name: str) -> PublicKeyAlgorithm:
+        return excast(cls.do_from_name(algo_name))
+
+    @classmethod
+    def do_from_name(cls, algo_name: str) -> PublicKeyAlgorithm | NotImplementedError:
         if not cls.supported:
             cls.supported = {a.name: a for a in cls.supported_algos()}
         algo = PublicKeyAlgorithm.supported.get(algo_name)
         if algo is None:
             msg = f"Public key algorithm not supported: {algo_name}."
-            raise NotImplementedError(msg)
+            return NotImplementedError(msg)
         return algo
 
 
@@ -48,9 +53,22 @@ class PublicKey(ABC):
     @abstractmethod
     def algo_name(self) -> str: ...
 
-    @abstractmethod
-    def verification_error(self, signature: bytes, message: bytes) -> Exception | None:
+    def verify(self, signature: bytes, message: bytes) -> None:
         """Verify the signature matches the message.
+
+        Subclasses should override do_verify, not verify.
+
+        Raises:
+            An exception object describing the reason the signature does
+            not match the message.
+        """
+        return excast(self.do_verify(signature, message))
+
+    @abstractmethod
+    def do_verify(self, signature: bytes, message: bytes) -> None | Exception:
+        """Verify the signature matches the message.
+
+        Call verify if you want an exception raised instead of returned.
 
         Returns:
             None if the signature is verified to match the message.
@@ -63,30 +81,22 @@ class PublicKey(ABC):
         """
         ...
 
-    def try_verify(self, signature: bytes, message: bytes) -> None:
-        """Verify the signature matches the message.
-
-        Subclasses should override verification_error, not try_verify.
-
-        Raises:
-            An exception object describing the reason the signature does
-            not match the message.
-        """
-        if err := self.verification_error(signature, message):
-            raise err
-        return None
-
     @abstractmethod
     def openssh_str(self) -> str: ...
 
     def __str__(self) -> str:
         return self.openssh_str()
 
+    @classmethod
+    def from_openssh_str(cls, line: str) -> PublicKey:
+        return excast(cls.do_from_openssh_str(line))
+
     @staticmethod
-    def from_openssh_str(line: str) -> PublicKey:
+    def do_from_openssh_str(line: str) -> PublicKey | ValueError | NotImplementedError:
         """Create PublicKey from an OpenSSH format public key string.
 
-        Raises:
+        Returns:
+            PublicKey: If no error.
             ValueError: If the input string is not a valid format or encoding.
             NotImplementedError: If the public key algorithm is not supported.
         """
@@ -99,17 +109,30 @@ class PublicKey(ABC):
             buf = binascii.a2b_base64(parts[1])
         except binascii.Error as ex:
             raise ValueError from ex
-        ret = PublicKey.from_ssh_encoding(buf)
+        ret = PublicKey.do_from_ssh_encoding(buf)
+        if not isinstance(ret, PublicKey):
+            return ret
         if ret.algo_name != key_algo_name:
             raise ValueError("Improperly encoded public key.")
         return ret
 
+    @classmethod
+    def from_ssh_encoding(cls, buf: bytes) -> PublicKey:
+        return excast(cls.do_from_ssh_encoding(buf))
+
     @staticmethod
-    def from_ssh_encoding(buf: bytes) -> PublicKey:
-        pkt = SshReader(buf)
-        algo_name = pkt.read_string().decode()
-        algo = PublicKeyAlgorithm.from_name(algo_name)
-        return algo.load_public_key(pkt)
+    def do_from_ssh_encoding(
+        buf: bytes,
+    ) -> PublicKey | ValueError | NotImplementedError:
+        try:
+            pkt = SshReader(buf)
+            algo_name = pkt.read_string().decode()
+            algo = PublicKeyAlgorithm.do_from_name(algo_name)
+            if not isinstance(algo, PublicKeyAlgorithm):
+                return algo
+            return algo.load_public_key(pkt)
+        except ValueError as error:
+            return error
 
 
 ##############################################################################
@@ -137,7 +160,7 @@ class Ed25519PublicKey(PublicKey):
     def algo_name(self) -> str:
         return "ssh-ed25519"
 
-    def verification_error(self, signature: bytes, message: bytes) -> Exception | None:
+    def do_verify(self, signature: bytes, message: bytes) -> None | Exception:
         sig_algo, raw_signature = ssh_read_string_pair(signature)
         assert sig_algo == b"ssh-ed25519"
         try:
@@ -186,7 +209,7 @@ class RsaPublicKey(PublicKey):
     def algo_name(self) -> str:
         return "ssh-rsa"
 
-    def verification_error(self, signature: bytes, message: bytes) -> Exception | None:
+    def do_verify(self, signature: bytes, message: bytes) -> None | Exception:
         sig_algo, raw_signature = ssh_read_string_pair(signature)
         if sig_algo not in [b"rsa-sha2-512", b"rsa-sha2-256"]:
             raise ValueError(f"Unsupported RSA signature hash algorithm: {sig_algo!r}")
