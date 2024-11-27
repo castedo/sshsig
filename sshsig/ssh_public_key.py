@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519, rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from .binary_io import SshReader, ssh_read_string_pair
-from .util import excast
+from .unexceptional import cast_or_raise, unexceptional
 
 
 class PublicKeyAlgorithm(ABC):
@@ -34,7 +34,7 @@ class PublicKeyAlgorithm(ABC):
 
     @classmethod
     def from_name(cls, algo_name: str) -> PublicKeyAlgorithm:
-        return excast(cls.do_from_name(algo_name))
+        return cast_or_raise(cls.do_from_name(algo_name))
 
     @classmethod
     def do_from_name(cls, algo_name: str) -> PublicKeyAlgorithm | NotImplementedError:
@@ -43,7 +43,7 @@ class PublicKeyAlgorithm(ABC):
         algo = PublicKeyAlgorithm.supported.get(algo_name)
         if algo is None:
             msg = f"Public key algorithm not supported: {algo_name}."
-            return NotImplementedError(msg)
+            return unexceptional(NotImplementedError(msg))
         return algo
 
 
@@ -62,7 +62,7 @@ class PublicKey(ABC):
             An exception object describing the reason the signature does
             not match the message.
         """
-        return excast(self.do_verify(signature, message))
+        return cast_or_raise(self.do_verify(signature, message))
 
     @abstractmethod
     def do_verify(self, signature: bytes, message: bytes) -> None | Exception:
@@ -89,7 +89,7 @@ class PublicKey(ABC):
 
     @classmethod
     def from_openssh_str(cls, line: str) -> PublicKey:
-        return excast(cls.do_from_openssh_str(line))
+        return cast_or_raise(cls.do_from_openssh_str(line))
 
     @staticmethod
     def do_from_openssh_str(line: str) -> PublicKey | ValueError | NotImplementedError:
@@ -103,22 +103,22 @@ class PublicKey(ABC):
         parts = line.split(maxsplit=2)
         if len(parts) < 2:
             msg = "Not space-separated OpenSSH format public key ('{}')."
-            raise ValueError(msg.format(line))
+            return unexceptional(ValueError(msg.format(line)))
         key_algo_name = parts[0]
         try:
             buf = binascii.a2b_base64(parts[1])
         except binascii.Error as ex:
-            raise ValueError from ex
+            return unexceptional(ValueError(), ex)
         ret = PublicKey.do_from_ssh_encoding(buf)
         if not isinstance(ret, PublicKey):
             return ret
         if ret.algo_name != key_algo_name:
-            raise ValueError("Improperly encoded public key.")
+            return unexceptional(ValueError("Improperly encoded public key."))
         return ret
 
     @classmethod
     def from_ssh_encoding(cls, buf: bytes) -> PublicKey:
-        return excast(cls.do_from_ssh_encoding(buf))
+        return cast_or_raise(cls.do_from_ssh_encoding(buf))
 
     @staticmethod
     def do_from_ssh_encoding(
@@ -212,7 +212,8 @@ class RsaPublicKey(PublicKey):
     def do_verify(self, signature: bytes, message: bytes) -> None | Exception:
         sig_algo, raw_signature = ssh_read_string_pair(signature)
         if sig_algo not in [b"rsa-sha2-512", b"rsa-sha2-256"]:
-            raise ValueError(f"Unsupported RSA signature hash algorithm: {sig_algo!r}")
+            msg = f"Unsupported RSA signature hash algorithm: {sig_algo!r}"
+            return unexceptional(ValueError(msg))
         hash_algo = hashes.SHA512() if sig_algo == b"rsa-sha2-512" else hashes.SHA256()
         try:
             self._impl.verify(raw_signature, message, padding.PKCS1v15(), hash_algo)

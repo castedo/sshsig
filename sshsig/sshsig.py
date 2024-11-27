@@ -12,7 +12,7 @@ from typing import BinaryIO, ClassVar
 
 from .binary_io import SshReader, SshWriter
 from .ssh_public_key import PublicKey
-from .util import excast
+from .unexceptional import cast_or_raise, unexceptional
 
 # SSHSIG armored, blob, and signed data formats are documented in a file named
 # `PROTOCOL.sshsig` which is archived from https://github.com/openssh/openssh-portable at
@@ -131,12 +131,18 @@ class SshsigSignature:
 
 
 def hash_file(msg_file: BinaryIO, hash_algo_name: str | bytes) -> bytes:
+    return cast_or_raise(do_hash_file(msg_file, hash_algo_name))
+
+
+def do_hash_file(
+    msg_file: BinaryIO, hash_algo_name: str | bytes
+) -> bytes | NotImplementedError:
     if isinstance(hash_algo_name, bytes):
         hash_algo_name = hash_algo_name.decode("ascii")
     hash_algo = hash_algo_name.lower()
     if hash_algo not in hashlib.algorithms_guaranteed:
         msg = "Signature hash algo '{}' not supported across platforms by Python."
-        raise NotImplementedError(msg.format(hash_algo))
+        return unexceptional(NotImplementedError(msg.format(hash_algo)))
     hobj = hashlib.new(hash_algo)
     while data := msg_file.read(8192):
         hobj.update(data)
@@ -156,7 +162,7 @@ def do_sshsig_verify(
     Returns:
         If no error, the cryptographic PublicKey embedded inside the SSHSIG signature.
         ValueError: If the input string is not a valid format or encoding.
-        NotImplementedError: If the public key algorithm is not supported.
+        NotImplementedError: If the public key or hash algorithm is not supported.
     """
     # The intention of this implementation is to reproduce (approximately)
     # the behaviour of the sshsig_verify_fd function of the ssh-keygen C file:
@@ -167,9 +173,13 @@ def do_sshsig_verify(
     _namespace = namespace.encode("ascii")
     if _namespace != sshsig_outer.namespace:
         errmsg = "Namespace of signature {} != {}"
-        return InvalidSignature(errmsg.format(sshsig_outer.namespace, _namespace))
+        return unexceptional(
+            InvalidSignature(errmsg.format(sshsig_outer.namespace, _namespace))
+        )
 
-    msg_hash = hash_file(msg_file, sshsig_outer.hash_algo)
+    msg_hash = do_hash_file(msg_file, sshsig_outer.hash_algo)
+    if isinstance(msg_hash, NotImplementedError):
+        return msg_hash
 
     toverify = SshsigWrapper(
         namespace=_namespace, hash_algo=sshsig_outer.hash_algo, hash=msg_hash
@@ -179,9 +189,9 @@ def do_sshsig_verify(
     if isinstance(pub_key, NotImplementedError):
         return pub_key
     if isinstance(pub_key, ValueError):
-        return InvalidSignature(pub_key)
+        return unexceptional(InvalidSignature(pub_key))
     if err := pub_key.do_verify(sshsig_outer.signature, toverify):
-        return InvalidSignature(err)
+        return unexceptional(InvalidSignature(err))
     return pub_key
 
 
@@ -190,7 +200,7 @@ def check_signature(
     armored_signature: str | bytes,
     namespace: str = "git"
 ) -> PublicKey:
-    return excast(do_check_signature(msg_in, armored_signature, namespace))
+    return cast_or_raise(do_check_signature(msg_in, armored_signature, namespace))
 
 
 def do_check_signature(
@@ -216,7 +226,7 @@ def do_check_signature(
     try:
         sshsig_outer = SshsigSignature.from_armored(armored_signature)
     except ValueError as ex:
-        return InvalidSignature(ex)
+        return unexceptional(InvalidSignature(ex))
     return do_sshsig_verify(sshsig_outer, msg_file, namespace)
 
 
@@ -226,7 +236,9 @@ def verify(
     allowed_signers: Iterable[PublicKey],
     namespace: str = "git",
 ) -> PublicKey:
-    return excast(do_verify(msg_in, armored_signature, allowed_signers, namespace))
+    return cast_or_raise(
+        do_verify(msg_in, armored_signature, allowed_signers, namespace)
+    )
 
     
 def do_verify(
@@ -259,5 +271,6 @@ def do_verify(
     if not isinstance(ret, PublicKey):
         return ret
     if all(key != ret for key in allowed_signers):
-        return InvalidSignature("Signature public key not of allowed signer.")
+        msg = "Signature public key not of allowed signer."
+        return unexceptional(InvalidSignature(msg))
     return ret
