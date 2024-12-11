@@ -3,13 +3,16 @@
 default:
     just --list
 
-check-runtime:
-    pytest tests -s
+test-runtime:
+    pytest tests
 
-check: && check-runtime
+test: && test-runtime
     ruff check sshsig || true
     mypy --strict sshsig
-    mypy tests
+    cd tests && mypy --ignore-missing-imports .  # cd for separate mypy cache+config
 
 check-with-unittest:
     python3 -m unittest discover -t . -s tests --buffer
+
+check: test
+check-runtime: test-runtime
