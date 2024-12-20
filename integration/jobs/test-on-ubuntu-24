@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+integration/run-on-distro ubuntu-24.04 just test

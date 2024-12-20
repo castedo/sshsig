@@ -1,0 +1,11 @@
+#!/usr/bin/bash
+set -o errexit -o nounset
+
+DISTRO=$1
+shift
+
+if [[ ! -v REPO_NAMESPACE ]]; then
+  REPO_NAMESPACE="registry.gitlab.com/perm.pub/dock"
+fi
+
+podman run --rm -it -v $PWD:/mnt -w /mnt $REPO_NAMESPACE/hidos-dev/$DISTRO "$@"

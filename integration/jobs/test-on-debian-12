@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+integration/run-on-distro debian-12 just test-runtime

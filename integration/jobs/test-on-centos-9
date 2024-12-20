@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+integration/run-on-distro centos-9 just test-runtime
