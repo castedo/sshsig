@@ -1,0 +1,23 @@
+name: Integration tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ubuntu 24 test
+        run: integration/jobs/test-on-ubuntu-24
+        uses: docker://quay.io/podman/stable
+      - name: Fedora test
+        run: integration/jobs/test-on-fedora
+        uses: docker://quay.io/podman/stable
+      - name: Debian 12 test
+        run: integration/jobs/test-on-debian-12
+        uses: docker://quay.io/podman/stable
+      - name: CentOS 9 test
+        run: integration/jobs/test-on-centos-9
+        uses: docker://quay.io/podman/stable
