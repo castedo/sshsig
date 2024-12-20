@@ -10,14 +10,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Ubuntu 24 test
-        run: integration/jobs/test-on-ubuntu-24
         uses: docker://quay.io/podman/stable
+        with:
+          args: integration/jobs/test-on-ubuntu-24
       - name: Fedora test
-        run: integration/jobs/test-on-fedora
         uses: docker://quay.io/podman/stable
+        with:
+          args: integration/jobs/test-on-fedora
       - name: Debian 12 test
-        run: integration/jobs/test-on-debian-12
         uses: docker://quay.io/podman/stable
+        with:
+          args: integration/jobs/test-on-debian-12
       - name: CentOS 9 test
-        run: integration/jobs/test-on-centos-9
         uses: docker://quay.io/podman/stable
+        with:
+          args: integration/jobs/test-on-centos-9
