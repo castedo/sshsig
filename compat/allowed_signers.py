@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO, TYPE_CHECKING, Union
 
-from .ssh_public_key import PublicKey
+from sshsig import PublicKey
 
 
 if TYPE_CHECKING:

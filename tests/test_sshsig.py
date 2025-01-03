@@ -5,8 +5,10 @@
 from pathlib import Path
 from unittest import TestCase
 
-from sshsig import ssh_keygen, sshsig
-from sshsig.allowed_signers import load_for_git_allowed_signers_file
+from sshsig import sshsig
+
+from compat import ssh_keygen
+from compat.allowed_signers import load_for_git_allowed_signers_file
 
 
 TESTDATA_DIR = Path(__file__).parent.parent / "testdata"

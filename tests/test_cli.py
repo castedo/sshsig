@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from sshsig import ssh_keygen
+from compat import ssh_keygen
 from .test_sshsig import SshKeygenCheckNoValidate
 
 from unittest import TestCase
