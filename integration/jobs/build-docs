@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+integration/run-on-distro fedora just build-docs

@@ -59,7 +59,7 @@ class PublicKey(ABC):
         Subclasses should override do_verify, not verify.
 
         Raises:
-            An exception object describing the reason the signature does
+            Exception: An exception object describing the reason the signature does \
             not match the message.
         """
         return cast_or_raise(self.do_verify(signature, message))
@@ -76,8 +76,8 @@ class PublicKey(ABC):
             not match the message.
 
         Raises:
-            Possible exceptions for reasons other than the public key determining
-            the signature does not match the message.
+            Exception: Possible exceptions for reasons other than the public key \
+            determining the signature does not match the message.
         """
         ...
 

@@ -14,5 +14,8 @@ test: && test-runtime
 integration-test:
     integration/test-all
 
+build-docs:
+    mkdocs build
+
 check: test
 check-runtime: test-runtime
