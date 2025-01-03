@@ -8,21 +8,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    container:
+      image: docker://quay.io/podman/stable
+      options: --privileged
     steps:
       - uses: actions/checkout@v4
-      - name: Ubuntu 24 test
-        uses: docker://quay.io/podman/stable
-        with:
-          args: integration/jobs/test-on-ubuntu-24
-      - name: Fedora test
-        uses: docker://quay.io/podman/stable
-        with:
-          args: integration/jobs/test-on-fedora
-      - name: Debian 12 test
-        uses: docker://quay.io/podman/stable
-        with:
-          args: integration/jobs/test-on-debian-12
-      - name: CentOS 9 test
-        uses: docker://quay.io/podman/stable
-        with:
-          args: integration/jobs/test-on-centos-9
+      - run: integration/jobs/test-on-ubuntu-24
+      - run: integration/jobs/test-on-fedora
+      - run: integration/jobs/test-on-debian-12
+      - run: integration/jobs/test-on-centos-9
