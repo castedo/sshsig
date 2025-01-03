@@ -9,11 +9,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: docker://quay.io/podman/stable
+      image: quay.io/podman/stable
       options: --privileged
     steps:
       - uses: actions/checkout@v4
-      - run: integration/jobs/test-on-ubuntu-24
-      - run: integration/jobs/test-on-fedora
-      - run: integration/jobs/test-on-debian-12
-      - run: integration/jobs/test-on-centos-9
+      - run: integration/test-all

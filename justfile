@@ -12,9 +12,7 @@ test: && test-runtime
     cd tests && mypy --ignore-missing-imports .  # cd for separate mypy cache+config
 
 integration-test:
-    #!/usr/bin/bash
-    set -o errexit
-    for J in integration/jobs/test-*; do echo $J; ./$J; done
+    integration/test-all
 
 check: test
 check-runtime: test-runtime

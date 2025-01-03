@@ -1,23 +1,5 @@
-test-on-fedora:
+test-all:
   stage: test
   image: quay.io/podman/stable
   script:
-    - integration/jobs/test-on-fedora
-
-test-on-ubuntu-24:
-  stage: test
-  image: quay.io/podman/stable
-  script:
-    - integration/jobs/test-on-ubuntu-24
-
-test-on-debian-12:
-  stage: test
-  image: quay.io/podman/stable
-  script:
-    - integration/jobs/test-on-debian-12
-
-test-on-centos-9:
-  stage: test
-  image: quay.io/podman/stable
-  script:
-    - integration/jobs/test-on-centos-9
+    - integration/test-all

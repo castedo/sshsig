@@ -1,0 +1,6 @@
+#!/usr/bin/bash
+set -o errexit -o nounset
+for JOB in integration/jobs/test-*; do
+    echo $JOB
+    $JOB
+done
