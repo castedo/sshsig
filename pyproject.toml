@@ -1,8 +1,34 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "sshsig"
+dynamic = ["version"]
 description = "SSH key signature verification"
-license = {text = "MIT"}
+license = {file = "LICENSE"}
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX",
+]
+maintainers = [
+  {name = "Castedo Ellerman", email = "castedo@castedo.com"},
+  {name = "Jelmer Vernooij", email = "jelmer@jelmer.uk"},
+]
 requires-python = ">=3.9"
+dependencies = ["cryptography"]
+
+[project.urls]
+GitHub = "https://github.com/castedo/sshsig"
+GitLab = "https://gitlab.com/perm.pub/sshsiglib"
+
+[tool.setuptools]
+packages = ["sshsig"]
+
+[tool.setuptools_scm]
+version_file = "sshsig/_version.py"
 
 [tool.ruff.lint]
 select = [

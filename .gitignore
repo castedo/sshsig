@@ -1,1 +1,4 @@
 __pycache__
+dist/
+sshsig.egg-info/
+sshsig/_version.py
