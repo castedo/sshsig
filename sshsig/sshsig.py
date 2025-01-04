@@ -160,9 +160,9 @@ def do_sshsig_verify(
     public key signature is valid for the provided input message.
 
     Returns:
-        If no error, the cryptographic PublicKey embedded inside the SSHSIG signature.
-        ValueError: If the input string is not a valid format or encoding.
-        NotImplementedError: If the public key or hash algorithm is not supported.
+      If no error, the cryptographic PublicKey embedded inside the SSHSIG signature.
+      ValueError: If the input string is not a valid format or encoding.
+      NotImplementedError: If a signature encoding feature is not supported.
     """
     # The intention of this implementation is to reproduce (approximately)
     # the behaviour of the sshsig_verify_fd function of the ssh-keygen C file:
@@ -198,7 +198,7 @@ def do_sshsig_verify(
 def check_signature(
     msg_in: str | bytes | BinaryIO,
     armored_signature: str | bytes,
-    namespace: str = "git"
+    namespace: str = "git",
 ) -> PublicKey:
     """Check that an ssh-keygen signature is a digital signature of the input message.
 
@@ -212,7 +212,7 @@ def check_signature(
 
     Raises:
       InvalidSignature: If signature is not valid for the input message.
-      NotImplementedError: If public key algorithm of the signature is not supported.
+      NotImplementedError: If a signature encoding feature is not supported.
     """
     return cast_or_raise(do_check_signature(msg_in, armored_signature, namespace))
 
@@ -220,15 +220,9 @@ def check_signature(
 def do_check_signature(
     msg_in: str | bytes | BinaryIO,
     armored_signature: str | bytes,
-    namespace: str = "git"
+    namespace: str = "git",
 ) -> PublicKey | InvalidSignature | NotImplementedError:
-    """Implementation of check_signature returning unexceptional Exception objects.
-
-    Returns:
-        If no error, the cryptographic PublicKey embedded inside the SSHSIG signature.
-        InvalidSignature: If signature is not a valid signature for the input message.
-        NotImplementedError: If a signature encoding feature is not supported.
-    """
+    """Implementation of check_signature returning unexceptional Exception objects."""
 
     if isinstance(msg_in, str):
         msg_in = msg_in.encode()
@@ -266,26 +260,20 @@ def verify(
 
     Raises:
       InvalidSignature: If signature is not valid for the input message.
-      NotImplementedError: If public key algorithm of the signature is not supported.
+      NotImplementedError: If a signature encoding feature is not supported.
     """
     return cast_or_raise(
         do_verify(msg_in, armored_signature, allowed_signers, namespace)
     )
 
-    
+
 def do_verify(
     msg_in: str | bytes | BinaryIO,
     armored_signature: str | bytes,
     allowed_signers: Iterable[PublicKey],
     namespace: str = "git",
 ) -> PublicKey | InvalidSignature | NotImplementedError:
-    """Implementation of verify returning unexceptional Exception objects.
-
-    Returns:
-        If no error, the cryptographic PublicKey embedded inside the SSHSIG signature.
-        InvalidSignature: If signature is not a valid signature for the input message.
-        NotImplementedError: If a signature encoding feature is not supported.
-    """
+    """Implementation of verify returning unexceptional Exception objects."""
     ret = check_signature(msg_in, armored_signature, namespace)
     if not isinstance(ret, PublicKey):
         return ret
