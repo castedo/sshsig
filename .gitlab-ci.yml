@@ -1,5 +1,16 @@
+image: quay.io/podman/stable
+
 test-all:
   stage: test
-  image: quay.io/podman/stable
   script:
     - integration/test-all
+
+pages:
+  script:
+    - integration/jobs/build-docs
+    - mv site public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH

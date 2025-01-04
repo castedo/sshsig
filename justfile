@@ -15,7 +15,7 @@ integration-test:
     integration/test-all
 
 build-docs:
-    mkdocs build
+    mkdocs build --strict --verbose
 
 check: test
 check-runtime: test-runtime
