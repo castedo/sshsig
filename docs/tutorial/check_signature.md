@@ -1,7 +1,6 @@
 Check Signature Tutorial
 ========================
 
-
 Objective
 ---------
 
@@ -47,9 +46,9 @@ The author of this tutorial signed the above message using a
 signature = """
 -----BEGIN SSH SIGNATURE-----
 U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAghB1C63jrmh3eWRXJVbrTfw9wP/
-BIZf/aKPdFxBlMCq0AAAAEZmlsZQAAAAAAAAAGc2hhNTEyAAAAUwAAAAtzc2gtZWQyNTUx
-OQAAAEBR90eZxhkhtOaTOSW3NWls5K9slgIt0ekhgs0mcAwBYlxmv5FkPJRC8cGA+PhfNR
-yATvqhW27arKFg/F++NL8J
+BIZf/aKPdFxBlMCq0AAAADZ2l0AAAAAAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5
+AAAAQCK1pq8IPKuxTat0RJbZ0LjElEgXNowFdFKElzuq9gunl2b4DHrla0FTkUJKp1eOk1
++GOGN+EejKcsFnrfmZ1gE=
 -----END SSH SIGNATURE-----
 """
 ```
@@ -62,7 +61,7 @@ using the message and the author's public/private key pair.
 
 ```python
 import sshsig
-pub_key = sshsig.check_signature(message, signature, 'file')
+pub_key = sshsig.check_signature(message, signature)
 ```
 
 Since `check_signature` returns without raising an exception, we know that
@@ -86,7 +85,7 @@ The signature is specifically for `message`.
 Checking a different message will fail.
 
 ```python
-sshsig.check_signature("A different message", signature, 'file')
+sshsig.check_signature("A different message", signature)
 ```
 
 An `sshsig.sshsig.InvalidSignature` exception is raised,

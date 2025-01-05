@@ -167,13 +167,11 @@ def for_git_allowed_keys(
     return ret
 
 
-def load_for_git_allowed_signers_file(file: Union[TextIO, Path]) -> Iterable[PublicKey]:
+def load_for_git_allowed_signers_file(file: TextIO | Path) -> Iterable[PublicKey]:
     return for_git_allowed_keys(load_allowed_signers_file(file))
 
 
-def save_for_git_allowed_signers_file(
-    src: set[PublicKey], out: Union[Path, TextIO]
-) -> None:
+def save_for_git_allowed_signers_file(src: set[PublicKey], out: Path | TextIO) -> None:
     """Save keys for git to "allowed signers" format per ssh-keygen."""
 
     if isinstance(out, Path):
