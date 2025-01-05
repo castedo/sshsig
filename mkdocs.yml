@@ -3,6 +3,7 @@ theme:
   name: material
   features:
     - content.code.copy
+    - navigation.footer
 plugins:
   - search
   - mkdocstrings
@@ -13,3 +14,4 @@ nav:
   - 'How-To Guides':
       - 'Check Git Commit': howto/check_commit.md
   - reference.md
+  - related.md
