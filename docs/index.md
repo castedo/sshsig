@@ -1,9 +1,14 @@
-Reference
-=========
+sshsig
+======
 
-::: sshsig.sshsig
-    handler: python
-    options:
-      members:
-        - check_signature
-        - verify
+[Check Signature Tutorial](tutorial/check_signature.md)
+
+[API reference](reference.md)
+
+
+Install
+-------
+
+```
+pip install sshlib
+```

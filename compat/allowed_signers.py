@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TextIO, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, TextIO
 
 from sshsig import PublicKey
 
@@ -111,7 +111,7 @@ def lop_option(options: AllowedSignerOptions, line: str, opt_name: str) -> str |
     return line[1:] if line[0] == "," else line
 
 
-def load_allowed_signers_file(file: Union[TextIO, Path]) -> Iterable[AllowedSigner]:
+def load_allowed_signers_file(file: TextIO | Path) -> Iterable[AllowedSigner]:
     """Read public keys in "allowed signers" format per ssh-keygen.
 
     Raises:

@@ -1,6 +1,13 @@
 site_name: Python SSHSIG Documentation
 theme:
-    name: material
+  name: material
+  features:
+    - content.code.copy
 plugins:
   - search
   - mkdocstrings
+nav:
+  - 'Home': index.md
+  - 'Tutorials':
+      - 'Check Signature': tutorial/check_signature.md
+  - reference.md

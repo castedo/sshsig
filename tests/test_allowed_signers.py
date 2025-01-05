@@ -117,7 +117,7 @@ foo@bar {} {} even without options ssh-keygen will ignore the end
         expect = [
             AllowedSigner(
                 "foo@bar",
-                None, 
+                None,
                 *key1,
                 "even without options ssh-keygen will ignore the end",
             )
