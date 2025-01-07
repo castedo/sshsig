@@ -1,6 +1,8 @@
 # (c) 2024 E. Castedo Ellerman <castedo@castedo.com>
 # Released under the MIT License (https://spdx.org/licenses/MIT)
 
+"""Parsing of the ssh-keygen allowed signers format."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -8,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
-from sshsig import PublicKey
+from .ssh_public_key import PublicKey
 
 
 if TYPE_CHECKING:
@@ -171,7 +173,9 @@ def load_for_git_allowed_signers_file(file: TextIO | Path) -> Iterable[PublicKey
     return for_git_allowed_keys(load_allowed_signers_file(file))
 
 
-def save_for_git_allowed_signers_file(src: set[PublicKey], out: Path | TextIO) -> None:
+def save_for_git_allowed_signers_file(
+    src: Iterable[PublicKey], out: Path | TextIO
+) -> None:
     """Save keys for git to "allowed signers" format per ssh-keygen."""
 
     if isinstance(out, Path):

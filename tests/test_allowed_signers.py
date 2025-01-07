@@ -7,8 +7,7 @@ from pathlib import Path
 from unittest import TestCase
 
 from sshsig import PublicKey
-
-from compat.allowed_signers import AllowedSigner, load_allowed_signers_file
+from sshsig.allowed_signers import AllowedSigner, load_allowed_signers_file
 
 
 TESTDATA_DIR = Path(__file__).parent.parent / "testdata"

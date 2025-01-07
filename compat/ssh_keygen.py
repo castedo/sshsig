@@ -6,8 +6,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from sshsig import InvalidSignature, check_signature, verify
-
-from .allowed_signers import load_for_git_allowed_signers_file
+from sshsig.allowed_signers import load_for_git_allowed_signers_file
 
 
 def cli_subcmd_check_novalidate(
