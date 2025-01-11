@@ -12,11 +12,11 @@ and print the public key that was used to sign the message.
 Prerequisites
 -------------
 
-You need to install the `sshlib` Python package.
+You need to install the `sshsig` Python package.
 A popular way to do this is by running:
 
 ```
-pip install sshlib
+pip install sshsig
 ```
 
 The steps in this tutorial include lines of Python code to be run within a Python interpreter.
