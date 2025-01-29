@@ -27,11 +27,11 @@ Steps
 ### 1. Switch to a Git commit with an SSH signature
 
 For this guide, you can switch to any Git commit that has an SSH signature.
-One of many ways to do this is by cloning the `0.1.2` release
+One of many ways to do this is by cloning the `0.2.2` release
 of `sshsig`:
 
 ```bash
-git clone https://github.com/castedo/sshsig.git -b 0.1.2
+git clone https://github.com/castedo/sshsig.git -b 0.2.2
 cd sshsig
 ```
 

@@ -89,17 +89,19 @@ class PublicKey(ABC):
 
     @classmethod
     def from_openssh_str(cls, line: str) -> PublicKey:
+        """Create PublicKey from an OpenSSH format public key string.
+
+        Returns:
+            PublicKey
+
+        Raises:
+            ValueError: If the input string is not a valid format or encoding.
+            NotImplementedError: If the public key algorithm is not supported.
+        """
         return cast_or_raise(cls.do_from_openssh_str(line))
 
     @staticmethod
     def do_from_openssh_str(line: str) -> PublicKey | ValueError | NotImplementedError:
-        """Create PublicKey from an OpenSSH format public key string.
-
-        Returns:
-            PublicKey: If no error.
-            ValueError: If the input string is not a valid format or encoding.
-            NotImplementedError: If the public key algorithm is not supported.
-        """
         parts = line.split(maxsplit=2)
         if len(parts) < 2:
             msg = "Not space-separated OpenSSH format public key ('{}')."

@@ -10,6 +10,8 @@ one of the two digital signature formats supported by
 
 [Check Signature Tutorial](tutorial/check_signature.md)
 
+[Verify Signature Tutorial](tutorial/verify_signature.md)
+
 [How to Check a Git Commit Signature](howto/check_commit.md)
 
 [API Reference](reference.md)

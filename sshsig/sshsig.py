@@ -274,7 +274,7 @@ def do_verify(
     namespace: str = "git",
 ) -> PublicKey | InvalidSignature | NotImplementedError:
     """Implementation of verify returning unexceptional Exception objects."""
-    ret = check_signature(msg_in, armored_signature, namespace)
+    ret = do_check_signature(msg_in, armored_signature, namespace)
     if not isinstance(ret, PublicKey):
         return ret
     if all(key != ret for key in allowed_signers):
