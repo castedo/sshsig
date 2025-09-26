@@ -45,8 +45,6 @@ ignore = [
     "ANN001",
     "ANN002",
     "ANN003",
-    "ANN101",  # missing-type-self
-    "ANN102",
     "ANN201",
     "ANN202",
     "ANN204",
@@ -64,6 +62,7 @@ ignore = [
     "D204",
     "D205",
     "D417",
+    "E401",
     "E501",  # line too long
     "E741",  # ambiguous variable name
     "UP007", # Use `X | Y` for type annotations

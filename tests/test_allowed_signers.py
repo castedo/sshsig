@@ -49,6 +49,30 @@ class PublicKeyParseTests(TestCase):
                 self.assertEqual(key_obj, PublicKey.from_openssh_str(s))
 
 
+class Sha256Tests(TestCase):
+    """SHA256 hash matching output of `ssh-keygen -lf openssh_key.pub`"""
+
+    def test_ed_keys(self):
+
+        key = PublicKey.from_openssh_str(" ".join(openssh_keys[0]))
+        self.assertEqual(
+            "SHA256:PNHgoqbbcYlxL276XBWECeIFzFi0bcYuEfH8jqMGT78",
+            key.sha256_str()
+        )
+        key = PublicKey.from_openssh_str(" ".join(openssh_keys[1]))
+        self.assertEqual(
+            "SHA256:Y+7Knz14csF0EXEmtJxn3lsz+J9RxAOEFyGE0Hgqapo",
+            key.sha256_str()
+        )
+
+    def test_rsa_key(self):
+        key = PublicKey.from_openssh_str(" ".join(rsa_key))
+        self.assertEqual(
+            "SHA256:LeJ+D7Wtixu8hp8BFX297lNSCvp9HGDbwkX8EmoDK+w",
+            key.sha256_str()
+        )
+
+
 class FileCaseParseTests(TestCase):
 
     def test_case_0(self):

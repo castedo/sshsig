@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-import binascii
+import base64, binascii, hashlib
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
@@ -83,6 +83,11 @@ class PublicKey(ABC):
 
     @abstractmethod
     def openssh_str(self) -> str: ...
+
+    def sha256_str(self) -> str:
+        """SHA256 hash matching output of `ssh-keygen -lf openssh_key.pub`."""
+
+        return ssh_key_fingerprint_sha256_str(self)
 
     def __str__(self) -> str:
         return self.openssh_str()
@@ -233,3 +238,13 @@ class RsaPublicKey(PublicKey):
 
     def __hash__(self) -> int:
         return hash((self._e, self._n))
+
+
+def ssh_key_fingerprint_sha256_str(pubkey: PublicKey) -> str:
+    parts = pubkey.openssh_str().split()
+    key_bytes = base64.b64decode(parts[1].encode('ascii'))
+    fp_bytes = hashlib.sha256(key_bytes).digest()
+    # an alternative calc of fp_bytes in the above 3 lines is
+    # cryptography.hazmat.primitives.serialization.ssh_key_fingerprint
+    # added in version 45
+    return "SHA256:" + base64.b64encode(fp_bytes).decode().rstrip('=')
