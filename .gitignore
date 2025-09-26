@@ -1,5 +1,6 @@
 __pycache__
 dist/
+build/
 sshsig.egg-info/
 sshsig/_version.py
 site/

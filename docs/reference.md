@@ -25,6 +25,8 @@ SSH Public Key
       show_root_heading: true
       members:
         - from_openssh_str
+        - openssh_str
+        - sha256_str
 
 
 Allowed Signers File Format

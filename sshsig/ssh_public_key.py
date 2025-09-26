@@ -82,10 +82,12 @@ class PublicKey(ABC):
         ...
 
     @abstractmethod
-    def openssh_str(self) -> str: ...
+    def openssh_str(self) -> str:
+        """Public key as OpenSSH format string."""
+        ...
 
     def sha256_str(self) -> str:
-        """SHA256 hash matching output of `ssh-keygen -lf openssh_key.pub`."""
+        """SHA256 hash as string like output of `ssh-keygen -lf openssh_key.pub`."""
 
         return ssh_key_fingerprint_sha256_str(self)
 

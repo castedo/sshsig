@@ -19,3 +19,10 @@ build-docs:
 
 check: test
 check-runtime: test-runtime
+
+clean:
+    rm -rf dist
+    rm -rf build
+    rm -rf *.egg-info
+    rm -f sshsig/_version.py
+    rm -rf site
